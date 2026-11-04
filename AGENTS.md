@@ -49,8 +49,8 @@ sft-rl-flow/
 ├── uv.lock                # 锁定版本，必须提交
 ├── .python-version        # 3.12
 ├── configs/               # 实验配置（YAML）
-│   ├── base.yaml          # 公共默认值
-│   └── rl/                # 按阶段分子目录：rl/ sft/ align/
+│   ├── rl/                # 完整、独立的经典 RL 配置
+│   └── sft/               # 完整、独立的模型 / LoRA / 调参配置
 ├── src/rlflow/            # 可复用库代码（唯一可被 import 的包）
 │   ├── paths.py           # 所有路径的唯一来源
 │   ├── experiment.py      # 本地 run、配置快照和指标日志
@@ -60,31 +60,39 @@ sft-rl-flow/
 │   ├── data/              # 数据集加载与预处理
 │   ├── train/             # 本地训练循环，模型计算通过 PyTRIO 云端执行
 │   └── eval/              # 云端采样，本地保存 case
-├── scripts/               # 一次性/命令行脚本（下载数据、批量跑实验）
+├── scripts/               # 实验、数据准备和云端管理 CLI
 ├── notebooks/             # 探索性分析，可随意，不要求整洁
 ├── tests/                 # 冒烟测试
 ├── docs/                  # 学习笔记、路线图、实验记录
-├── data/                  # 【gitignored】raw/ 只读原始数据，processed/ 可重建
+├── data/                  # 【gitignored】download_data/ 下载脚本，raw/ 原始数据，processed/ 派生数据
 ├── models/                # 【gitignored】权重与 checkpoints
 └── outputs/               # 【gitignored】每次 run 的日志、指标、配置快照
 ```
 
-**判断代码放哪：** 会被第二次用到 → `src/rlflow/`；只跑一次 → `scripts/`；边看边试 → `notebooks/`。
+**判断代码放哪：** 可复用逻辑 → `src/rlflow/`；实验 CLI → `scripts/`；
+外部数据下载入口 → `data/download_data/`；边看边试 → `notebooks/`。
 
 ## 3. 配置规范
 
 - 所有超参数写在 `configs/**/*.yaml`，**代码里不写死**。
-- 命名：`configs/{阶段}/{算法}_{环境或任务}.yaml`，例：`configs/rl/ppo_cartpole.yaml`。
-- 所有配置都继承 `configs/base.yaml`，只写差异项。
+- 每个 YAML 必须独立写全参数；不使用公共 base 或 `defaults` 继承，不在加载器中补默认值。
+- RL 命名：`configs/rl/{算法}_{环境}.yaml`，例：`ppo_cartpole.yaml`。
+- SFT 调参命名：`configs/sft/<模型>-lora-r<rank>-lr<学习率>-bs<batch_size>.yaml`，
+  例：`qwen3.5-4b-lora-r8-lr1e-4-bs1.yaml`；`pytrio_toy.yaml` 保留用于未选模型的离线验证。
+  复制调参配置时同步修改文件名和 `run_name`；临时 `--set` 覆盖以配置快照为准。
+- 仅声明执行路径实际支持的超参数；当前 PyTRIO 无 4bit、LoRA alpha/dropout 入口，不能添加空字段。
 - 必须包含这些顶层键：`seed`、`device`、`stage`、`algo`、`env|task`、`train`、`logging`。
-- 每个 run 启动时把**合并后的完整配置**快照写入 `outputs/<run_id>/config.yaml`，
+- 每个 run 启动时把**应用命令行覆盖后的完整配置**快照写入 `outputs/<run_id>/config.yaml`，
   否则该实验视为不可复现。
 - 随机种子必须显式设置（numpy / torch / gymnasium / python random），写一次工具函数到处复用。
 
 ## 4. 数据下载与加载规范
 
 - `data/raw/` **只读**，下载后不再修改；派生数据放 `data/processed/`，且必须能由脚本重建。
-- 外部数据集下载统一走 `scripts/download_data.py`（尚未实现），必须**幂等**。
+- 外部数据集下载代码放在 `data/download_data/`，文件名为
+  `download_<数据集名>_<数据量>.py`；数据量表示样本条数（如 `1000`、`10k`、`all`）。
+  下载必须**幂等**，输出原始文件到 `RAW_DIR`，不把下载的数据放进脚本目录。
+  当前未指定外部数据集，尚无具体下载脚本；详细约定见 `docs/data-downloads.md`。
   当前 toy 样本由 `scripts/prepare_data.py --toy` 在本地生成，不依赖外部数据集；
   `--input` 校验用户已有的原始 JSONL 并写入 processed，不修改 raw。
 - 每份数据在 `data/manifest.json` 登记一条：
@@ -126,8 +134,9 @@ sft-rl-flow/
 ## 6. 日志（SwanLab，不是 wandb）
 
 - 训练日志用 **SwanLab**：`import swanlab; swanlab.init(project="sft-rl-flow", ...)`。
-- 默认离线：`SWANLAB_MODE=offline`，日志落在 `swanlog/`（已 gitignore）。
-  需要上传时由用户显式设 `SWANLAB_MODE=cloud` 并提供 `SWANLAB_API_KEY`。
+- 日志模式由每份配置显式指定；当前用户已选择 `logging.mode=cloud`。
+  仅本地记录时设 `offline`，日志落在 run 内的 `swanlog/`；cloud 模式需要认证。
+  `.env` / shell 的 `SWANLAB_MODE` 优先于 YAML。
 - **不要**引入 wandb / tensorboard / mlflow。
 - 关键指标（reward、loss、KL、entropy、eval return）每个 epoch/step 都记录，不要只在最后打印。
 

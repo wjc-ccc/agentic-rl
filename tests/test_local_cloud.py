@@ -76,7 +76,9 @@ def test_paths_and_config_work_outside_repo(tmp_path, monkeypatch):
     assert _dir("RLFLOW_TEST_DIR", "outputs") == PROJECT_ROOT / "models"
     cfg = load_config("configs/sft/pytrio_toy.yaml")
     apply_overrides(cfg, ["train.lr=2e-4"])
-    assert float(cfg["train"]["lr"]) == 2e-4
+    assert cfg["train"]["lr"] == 2e-4
+    apply_overrides(cfg, ["optimizer.eps=1e-8"])
+    assert cfg["optimizer"]["eps"] == 1e-8
     assert cfg["seed"] == 42
     with pytest.raises(KeyError):
         apply_overrides(cfg, ["train.lrr=1"])
@@ -131,6 +133,8 @@ def test_swanlab_logging_stays_local(tmp_path, monkeypatch):
     from rlflow import experiment as experiment_module
 
     monkeypatch.setattr(experiment_module, "OUTPUTS_DIR", tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("SWANLAB_PROJECT", raising=False)
     monkeypatch.setenv("SWANLAB_MODE", "offline")
     cfg = load_config("configs/sft/pytrio_toy.yaml")
     run = Experiment(cfg)
@@ -191,6 +195,17 @@ def test_sft_and_sampling_use_real_sdk_types_without_network(tmp_path, monkeypat
     cfg["model"]["base_model"] = "test-model"
     cfg["train"]["epochs"] = 2
     cfg["train"]["checkpoint_every"] = 1
+    cfg["train"]["lr"] = 2e-4
+    cfg["model"]["lora_rank"] = 16
+    cfg["model"]["train_mlp"] = False
+    cfg["optimizer"].update(
+        beta1=0.8,
+        beta2=0.98,
+        eps=1e-8,
+        weight_decay=0.1,
+        grad_clip_norm=1.0,
+    )
+    cfg["sampling"].update(top_p=0.8, top_k=20, stop=["END"])
     events = []
     run = Experiment(cfg)
     # 此测试聚焦 SDK 契约和本地文件；SwanLab 离线另作真实脚本验证。
@@ -216,6 +231,14 @@ def test_sft_and_sampling_use_real_sdk_types_without_network(tmp_path, monkeypat
 
         def optim_step(self, params):
             assert isinstance(params, trio.AdamParams)
+            assert params.model_dump() == {
+                "learning_rate": 2e-4,
+                "beta1": 0.8,
+                "beta2": 0.98,
+                "eps": 1e-8,
+                "weight_decay": 0.1,
+                "grad_clip_norm": 1.0,
+            }
             assert events[-1] == "forward"
             return future("optim", None)
 
@@ -232,6 +255,9 @@ def test_sft_and_sampling_use_real_sdk_types_without_network(tmp_path, monkeypat
         def sample(self, prompt, sampling_params, num_samples):
             assert isinstance(prompt, trio.ModelInput)
             assert isinstance(sampling_params, trio.SamplingParams)
+            assert sampling_params.top_p == 0.8
+            assert sampling_params.top_k == 20
+            assert sampling_params.stop == ["END"]
             assert num_samples == 1
             return future(
                 "sample",
@@ -262,8 +288,11 @@ def test_sft_and_sampling_use_real_sdk_types_without_network(tmp_path, monkeypat
     train_sft(cfg, [MESSAGES], run, service)
     service.create_lora_training_client.assert_called_once_with(
         base_model="test-model",
-        rank=8,
+        rank=16,
         seed=42,
+        train_mlp=False,
+        train_attn=True,
+        train_unembed=True,
     )
     run.finish("completed")
     metrics = [json.loads(line) for line in (run.path / "metrics.jsonl").read_text().splitlines()]

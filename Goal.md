@@ -9,6 +9,8 @@
 - 当前实现最小 SFT 闭环；DPO / GRPO 等按学习路线逐步实现，不用空壳冒充已完成算法。
 - 账号和模型暂未确定：先完成无需凭据的离线验证，再查询支持模型并执行真实云端实验。
 - 代码、配置、文档和 skill 上传 GitHub；原始数据、权重、日志和密钥保留在本地或云端存储。
+- RL / SFT 各用完整独立 YAML，不使用 base 或 defaults 继承；模型调参配置名包含模型、LoRA rank、lr、batch。
+- 外部数据下载脚本位于 `data/download_data/`，命名 `download_<数据集名>_<数据量>.py`。
 
 验收：`uv run pytest` 通过；toy 数据准备可重复执行；`train.py --dry-run` 不建立云端连接；
 SDK 调用契约通过无网络测试；实际云端训练效果需有账号和模型后另行验证。

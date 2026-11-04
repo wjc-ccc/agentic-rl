@@ -1,0 +1,50 @@
+# 独立完整的模型调参配置；不引用 RL 或其他 YAML。
+# 正式训练前用 scripts/cloud.py models 确认模型可用。
+# 命名：<模型>-lora-r<rank>-lr<学习率>-bs<batch_size>.yaml
+seed: 42
+device: remote
+stage: sft
+algo: sft
+run_name: qwen3.5-4b-lora-r8-lr1e-4-bs1
+task: local-cloud-toy
+
+execution:
+  backend: pytrio
+
+model:
+  base_model: Qwen/Qwen3.5-4B
+  lora_rank: 8  # PyTRIO 支持 4–64
+  train_mlp: true
+  train_attn: true
+  train_unembed: true
+  # 当前 SDK 无 4bit / LoRA alpha / dropout 配置入口，不添加不生效的字段。
+
+data:
+  train: pytrio_toy/train.jsonl
+  cases: pytrio_toy/cases.jsonl
+  max_length: 512
+
+train:
+  epochs: 1
+  lr: 1.0e-4
+  batch_size: 1
+  checkpoint_every: 3
+
+optimizer:
+  beta1: 0.9
+  beta2: 0.95
+  eps: 1.0e-12
+  weight_decay: 0.0
+  grad_clip_norm: 0.0  # 0 关闭裁剪；例如改为 1.0
+
+sampling:
+  max_tokens: 128
+  temperature: 0.0
+  top_p: 1.0
+  top_k: -1
+  stop: null
+
+logging:
+  backend: swanlab
+  project: sft-rl-flow
+  mode: cloud  # 仅本地记录时设为 offline

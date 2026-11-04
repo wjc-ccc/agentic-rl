@@ -1,4 +1,4 @@
-"""YAML 配置加载：支持 `defaults: <path>` 继承，子配置覆盖父配置。
+"""读取单份完整 YAML 配置，不继承、不合并其他配置。
 
 用法：
     from rlflow.config import load_config
@@ -12,40 +12,22 @@ from typing import Any
 
 import yaml
 
-from rlflow.paths import PROJECT_ROOT
-
-
-def _resolve(path: str | Path) -> Path:
-    p = Path(path)
-    return p if p.is_absolute() else (PROJECT_ROOT / p)
-
-
-def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-    out = dict(base)
-    for key, value in override.items():
-        if isinstance(value, dict) and isinstance(out.get(key), dict):
-            out[key] = _deep_merge(out[key], value)
-        else:
-            out[key] = value
-    return out
+from rlflow.paths import project_path
 
 
 def load_config(path: str | Path) -> dict[str, Any]:
-    cfg_path = _resolve(path)
+    cfg_path = project_path(path)
     if not cfg_path.exists():
         raise FileNotFoundError(f"配置不存在: {cfg_path}")
 
     with cfg_path.open("r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f) or {}
-
-    parent = cfg.pop("defaults", None)
-    parents = [parent] if isinstance(parent, str) else list(parent or [])
-    merged: dict[str, Any] = {}
-    for p in parents:
-        merged = _deep_merge(merged, load_config(p))
-    merged = _deep_merge(merged, cfg)
-    merged["_config_path"] = str(cfg_path.resolve())
-    return merged
+        cfg = yaml.safe_load(f)
+    if not isinstance(cfg, dict):
+        raise ValueError(f"配置必须是完整的 YAML 映射: {cfg_path}")
+    if "defaults" in cfg:
+        raise ValueError("不支持 defaults 继承，请在当前 YAML 中写全实验参数")
+    cfg["_config_path"] = str(cfg_path)
+    return cfg
 
 
 def apply_overrides(cfg: dict, overrides: list[str]) -> None:
@@ -60,4 +42,6 @@ def apply_overrides(cfg: dict, overrides: list[str]) -> None:
             node = node[parent]
         if leaf not in node:
             raise KeyError(f"配置键不存在: {key}")
-        node[leaf] = yaml.safe_load(raw)
+        value = yaml.safe_load(raw)
+        # YAML 会把 2e-4 解析为字符串；数值调参沿用配置中声明的浮点类型。
+        node[leaf] = float(value) if isinstance(node[leaf], float) else value

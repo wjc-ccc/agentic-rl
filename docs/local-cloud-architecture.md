@@ -10,7 +10,7 @@
 | 模型 forward、backward、optimizer update | PyTRIO 云端 | 本地接收 logprob，计算监督 token 平均 loss |
 | 推理采样 | PyTRIO 云端 | 发送 prompt token 与 SamplingParams，接收文本和 token |
 | reward / 自定义目标（后续 DPO/GRPO） | 本地算法层 | custom loss 可能在本地计算 dL/dlogprob；模型反向仍在云端，当前未实现 |
-| 指标、曲线、实验状态 | 本地 JSONL + SwanLab offline | `inspect_run.py --kind metrics --watch`；仅显式 cloud 模式上传 SwanLab |
+| 指标、曲线、实验状态 | 本地 JSONL + SwanLab | `inspect_run.py --kind metrics --watch`；当前配置显式选择 cloud，可改 offline |
 | case 对照与人工检查 | 本地 `cases.jsonl` | 同一 case 集分别采样 base / adapter，无自动准确率结论 |
 | sampler 权重、完整 optimizer 状态 | 云端 | `checkpoints.json` 分别记录 sampler / train path |
 | adapter 下载与归档 | 本地 `models/checkpoints/` | 根据真实 checkpoint ID 取得短期 URL，保存 ZIP、sha256 和大小 |
@@ -23,14 +23,18 @@
 
 复用库代码在 `src/rlflow/`；脚本仅处理 CLI 参数和调用：
 
-- `experiment.py`：创建唯一 run、保存合并配置和依赖版本、逐步写指标。
+- `experiment.py`：创建唯一 run、保存完整配置和依赖版本、逐步写指标。
 - `remote.py`：连接 SDK、核对支持模型、下载 adapter；不加载模型。
 - `data/sft.py`：读取 JSONL、数据 hash、最终 assistant-only mask 和自回归右移。
 - `train/sft.py`：本地 SFT 循环，等待云端 future 完成再进行下一步。
 - `eval/cases.py`：云端采样和本地 case 保存。
 
-`configs/sft/pytrio_toy.yaml` 继承 `configs/base.yaml`。
-模型默认空值；账号就绪后查询列表并配置，实际训练创建 session 前验证支持情况。
+RL 和 SFT 配置独立写全参数；已移除公共 base 和 `defaults` 继承逻辑。
+`configs/sft/pytrio_toy.yaml` 保留空模型，用于离线验证。
+`configs/sft/qwen3.5-4b-lora-r8-lr1e-4-bs1.yaml` 提供完整的模型调参示例；
+实际训练创建 session 前仍验证服务支持情况。
+LoRA rank 和训练层开关传给 TrainingClient，`train.lr` 和 `optimizer` 传给 AdamParams，
+`sampling` 传给 SamplingParams；当前不支持指定 4bit 或 LoRA alpha/dropout。
 `--set` 只允许覆盖已声明的键，拼错时立即失败。API Key 仅来自登录状态或 `.env`。
 
 当前数据格式是一行一个对象：
@@ -59,7 +63,7 @@ uv run python scripts/prepare_data.py --config <自己的配置> --input <相对
 
 ```text
 outputs/<时间>-sft-pytrio-toy-s42/
-  config.yaml          # 合并配置、有效日志模式、训练数据 sha256
+  config.yaml          # 独立配置 + CLI 覆盖、有效日志模式、训练数据 sha256
   run.json             # 状态、是否 dry-run、本地依赖版本
   remote.json          # 云端 service session ID 和 base model
   metrics.jsonl        # 每步 loss、epoch、监督 token 数、时间

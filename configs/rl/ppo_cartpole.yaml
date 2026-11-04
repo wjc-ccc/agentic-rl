@@ -1,7 +1,7 @@
-# 第一个可跑通的策略梯度实验：PPO on CartPole-v1。
-# 运行：uv run python scripts/train.py --config configs/rl/ppo_cartpole.yaml
-defaults: configs/base.yaml
-
+# 独立的 PPO / CartPole 配置；算法尚未实现，当前仅支持 --dry-run。
+# 运行：uv run python scripts/train.py --config configs/rl/ppo_cartpole.yaml --dry-run
+seed: 42
+device: auto
 stage: rl
 algo: ppo
 run_name: ppo-cartpole
@@ -14,6 +14,7 @@ env:
 train:
   total_steps: 100_000
   lr: 3.0e-4
+  gamma: 0.99
   rollout_steps: 1024
   epochs: 10
   minibatch_size: 256
@@ -21,6 +22,16 @@ train:
   gae_lambda: 0.95
   entropy_coef: 0.01
   value_coef: 0.5
+  checkpoint_every: 20_000
 
 model:
   hidden_sizes: [64, 64]
+
+eval:
+  every: 5_000
+  episodes: 10
+
+logging:
+  backend: swanlab
+  project: sft-rl-flow
+  mode: cloud  # 保留用户显式开启的 cloud；纯本地日志可改 offline

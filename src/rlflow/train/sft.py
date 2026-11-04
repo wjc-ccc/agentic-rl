@@ -33,6 +33,9 @@ def train_sft(cfg: dict, rows: list[list[dict]], experiment, service) -> None:
         base_model=cfg["model"]["base_model"],
         rank=cfg["model"]["lora_rank"],
         seed=cfg["seed"],
+        train_mlp=cfg["model"]["train_mlp"],
+        train_attn=cfg["model"]["train_attn"],
+        train_unembed=cfg["model"]["train_unembed"],
     )
     experiment.write(
         "remote.json",
@@ -66,7 +69,9 @@ def train_sft(cfg: dict, rows: list[list[dict]], experiment, service) -> None:
         for start in range(0, len(order), size):
             batch = [datums[i] for i in order[start : start + size]]
             result = training.forward_backward(batch, loss_fn="cross_entropy").result()
-            training.optim_step(trio.AdamParams(learning_rate=float(cfg["train"]["lr"]))).result()
+            training.optim_step(
+                trio.AdamParams(learning_rate=float(cfg["train"]["lr"]), **cfg["optimizer"])
+            ).result()
             logprobs = np.concatenate(
                 [np.asarray(out["logprobs"].tolist()) for out in result.loss_fn_outputs]
             )

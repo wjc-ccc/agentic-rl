@@ -11,7 +11,7 @@ data/
 
 约定：
 
-- 外部数据集下载走 `scripts/download_data.py`（尚未实现），幂等、校验 sha256，
+- 外部数据下载脚本放在 `data/download_data/`，命名 `download_<数据集名>_<数据量>.py`，幂等、校验 sha256，
   并在 `manifest.json` 登记来源和许可，字段见 `AGENTS.md` §4。
 - 当前 toy 数据由 `scripts/prepare_data.py --config configs/sft/pytrio_toy.yaml --toy`
   自造并写入 processed，不下载外部数据；相同文件跳过，不同文件拒绝覆盖。

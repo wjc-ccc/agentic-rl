@@ -48,7 +48,9 @@ flowchart LR
 
 无需将整个仓库或原始数据目录上传到 PyTRIO，SDK 会发送构造后的 token batch。
 权重和训练状态保存在云端，本地保存引用；下载的是 PEFT LoRA adapter ZIP。
-指标和 case 默认只存本地，SwanLab 上传仍需显式开启。
+指标和 case 始终保存在本地；当前配置保留用户选择的 SwanLab `mode: cloud`，
+需要认证才能上传。只在本地记录时，将 YAML 的 `logging.mode` 改为 `offline`；
+`.env` / shell 的 `SWANLAB_MODE` 优先于 YAML。
 
 先运行不需要账号、模型或网络的本地准备：
 
@@ -68,6 +70,32 @@ uv run trio login
 uv run python scripts/cloud.py models
 uv run python scripts/train.py --config configs/sft/pytrio_toy.yaml --set "model.base_model=<查询返回的模型名>"
 ```
+
+## 独立配置与调参
+
+RL 和 SFT 各自使用完整 YAML，没有公共 base 或 `defaults` 继承：
+
+| 配置 | 用途 |
+|---|---|
+| `configs/rl/ppo_cartpole.yaml` | PPO 的环境、折扣率、GAE、clip 等参数 |
+| `configs/sft/pytrio_toy.yaml` | 未选模型时的数据准备与离线验证 |
+| `configs/sft/qwen3.5-4b-lora-r8-lr1e-4-bs1.yaml` | 按模型、LoRA rank、学习率、batch 命名的独立示例 |
+
+SFT 常调项：`model.base_model`、`model.lora_rank`、LoRA 训练层开关、`data.max_length`、
+`train.lr`、`train.batch_size`、`train.epochs`、保存频率、`optimizer.weight_decay`、
+`optimizer.grad_clip_norm`、Adam betas / eps 和 `sampling` 生成参数，全部实际接入执行代码。
+当前 PyTRIO SDK 无 4bit、LoRA alpha/dropout 配置入口，因此示例不标注这些参数。
+Qwen 配置是模型选择示例，正式训练前仍需查询当前服务支持列表。
+
+复制一份配置做固定实验时，同步修改文件名和 `run_name`。临时覆盖示例（只做离线验证）：
+
+```powershell
+uv run python scripts/train.py --config configs/sft/qwen3.5-4b-lora-r8-lr1e-4-bs1.yaml --dry-run --set train.lr=2e-4 --set train.batch_size=2 --set optimizer.weight_decay=0.01 --set optimizer.grad_clip_norm=1.0 --set run_name=qwen3.5-4b-lora-r8-lr2e-4-bs2
+```
+
+外部数据下载脚本放在 `data/download_data/`，命名为 `download_<数据集名>_<数据量>.py`；
+例如 `download_gsm8k_1000.py`（仅命名示例）。数据写入 `data/raw/`，规则见
+[`docs/data-downloads.md`](docs/data-downloads.md)。
 
 将 `<run目录>` 替换为训练入口实际打印的绝对目录；监控命令可在第二个终端运行：
 
@@ -107,4 +135,4 @@ Codex 下一轮可发现该项目级 skill，不涉及 `-g` 全局安装。
 - Python 3.12（由 uv 管理）
 - 现有 PyTorch + CUDA 12.8 学习依赖保留；云端 SFT/推理不在本机加载模型
 - PyTRIO SDK 通过 `cloud` extra 安装并由 `uv.lock` 锁定
-- 实验跟踪：SwanLab（默认离线）
+- 实验跟踪：SwanLab（当前 YAML 显式选择 cloud，可切换 offline）
