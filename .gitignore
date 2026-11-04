@@ -1,0 +1,47 @@
+# ---------- Python / uv 虚拟环境 ----------
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# ---------- 密钥 ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---------- 数据 / 模型 / 训练产物（不进版本库） ----------
+data/*
+!data/README.md
+!data/manifest.json
+models/*
+!models/README.md
+checkpoints/
+outputs/*
+!outputs/.gitkeep
+runs/
+logs/*
+!logs/.gitkeep
+swanlog/
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+*.onnx
+*.gguf
+*.log
+
+# ---------- 缓存 ----------
+.cache/
+.huggingface/
+
+# ---------- 系统 / 编辑器 / 本地 Claude 配置 ----------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.claude/settings.local.json

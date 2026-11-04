@@ -1,0 +1,62 @@
+[project]
+name = "sft-rl-flow"
+version = "0.1.0"
+description = "Learning-oriented SFT + RL post-training flow, from tabular RL to LLM alignment."
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "numpy>=2.0",
+    "torch>=2.5",
+    "gymnasium>=1.1",
+    "matplotlib>=3.9",
+    "pyyaml>=6.0",
+    "tqdm>=4.66",
+    "rich>=13.9",
+    "swanlab>=0.5",
+]
+
+[project.optional-dependencies]
+# Heavy LLM post-training stack. Install only when you reach that stage:
+#   uv sync --extra llm
+llm = [
+    "transformers>=4.46",
+    "datasets>=3.1",
+    "accelerate>=1.1",
+    "peft>=0.13",
+    "trl>=0.13",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+    "ipykernel>=6.29",
+    "jupyterlab>=4.3",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,26 @@
+# 第一个可跑通的策略梯度实验：PPO on CartPole-v1。
+# 运行：uv run python scripts/train.py --config configs/rl/ppo_cartpole.yaml
+defaults: configs/base.yaml
+
+stage: rl
+algo: ppo
+run_name: ppo-cartpole
+
+env:
+  id: CartPole-v1
+  num_envs: 4
+  max_episode_steps: 500
+
+train:
+  total_steps: 100_000
+  lr: 3.0e-4
+  rollout_steps: 1024
+  epochs: 10
+  minibatch_size: 256
+  clip_ratio: 0.2
+  gae_lambda: 0.95
+  entropy_coef: 0.01
+  value_coef: 0.5
+
+model:
+  hidden_sizes: [64, 64]

@@ -1,0 +1,21 @@
+# 所有实验配置的公共默认值。子配置只需覆盖差异项。
+seed: 42
+device: auto            # auto | cuda | cpu
+stage: rl               # rl | sft | align
+
+logging:
+  backend: swanlab
+  project: sft-rl-flow
+  mode: offline         # offline | cloud，上传由用户显式开启
+  log_every: 10
+
+train:
+  total_steps: 100_000
+  lr: 3.0e-4
+  batch_size: 64
+  gamma: 0.99
+  checkpoint_every: 20_000
+
+eval:
+  every: 5_000
+  episodes: 10
