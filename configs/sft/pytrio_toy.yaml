@@ -1,0 +1,31 @@
+# 本地控制、云端计算的最小 SFT；先 prepare_data.py --toy，再 train.py --dry-run。
+defaults: configs/base.yaml
+stage: sft
+algo: sft
+device: remote
+run_name: sft-pytrio-toy
+task: local-cloud-toy
+
+execution:
+  backend: pytrio
+
+model:
+  # 登录后用 scripts/cloud.py models 查询。禁止猜测服务当前支持的模型。
+  base_model: null
+  lora_rank: 8
+
+data:
+  # 相对 PROCESSED_DIR；原始文件不上传，只发送构造后的 token batch。
+  train: pytrio_toy/train.jsonl
+  cases: pytrio_toy/cases.jsonl
+  max_length: 512
+
+train:
+  epochs: 1
+  lr: 1.0e-4
+  batch_size: 1
+  checkpoint_every: 3
+
+sampling:
+  max_tokens: 128
+  temperature: 0.0

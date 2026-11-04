@@ -10,8 +10,8 @@
 
 目标不是刷榜，而是：**每一步都能跑通、能解释、能复现**。
 
-- 当前阶段：环境搭建 / 学习起步
-- 硬件：单卡 RTX 3060 Laptop **6 GB**（见 §8 限制，这决定了所有实验的规模）
+- 当前阶段：本地实验控制 + PyTRIO 云端 SFT 最小闭环（真实云端实验待账号/模型配置）
+- 硬件：本地 RTX 3060 Laptop **6 GB**；模型计算在 PyTRIO 云端，见 §8 的适用范围
 - 仓库：https://github.com/wjc-ccc/agentic-rl
 
 ## 1. 环境与依赖管理
@@ -22,6 +22,7 @@
 |---|---|
 | 安装/同步全部依赖 | `uv sync` |
 | 安装 LLM 相关重型依赖 | `uv sync --extra llm` |
+| 安装 PyTRIO 云端客户端与 tokenizer 依赖 | `uv sync --extra cloud` |
 | 运行任何脚本 | `uv run python scripts/xxx.py` |
 | 跑测试 | `uv run pytest` |
 | 新增依赖 | `uv add <pkg>` / `uv add --dev <pkg>` |
@@ -43,6 +44,7 @@ sft-rl-flow/
 ├── CLAUDE.md              # 导入本文，供 Claude Code 自动加载
 ├── README.md              # 人类入口
 ├── Goal.md                # 用户的阶段性目标（会变，先读）
+├── .agents/skills/         # 项目级 skill，随仓库版本管理
 ├── pyproject.toml         # 依赖声明
 ├── uv.lock                # 锁定版本，必须提交
 ├── .python-version        # 3.12
@@ -51,11 +53,13 @@ sft-rl-flow/
 │   └── rl/                # 按阶段分子目录：rl/ sft/ align/
 ├── src/rlflow/            # 可复用库代码（唯一可被 import 的包）
 │   ├── paths.py           # 所有路径的唯一来源
+│   ├── experiment.py      # 本地 run、配置快照和指标日志
+│   ├── remote.py          # PyTRIO 连接、模型检查、LoRA 下载
 │   ├── envs/              # 环境封装 / 自定义 gymnasium env
 │   ├── algos/             # 算法实现（q_learning, ppo, grpo ...）
 │   ├── data/              # 数据集加载与预处理
-│   ├── train/             # 训练入口
-│   └── eval/              # 评测
+│   ├── train/             # 本地训练循环，模型计算通过 PyTRIO 云端执行
+│   └── eval/              # 云端采样，本地保存 case
 ├── scripts/               # 一次性/命令行脚本（下载数据、批量跑实验）
 ├── notebooks/             # 探索性分析，可随意，不要求整洁
 ├── tests/                 # 冒烟测试
@@ -80,7 +84,9 @@ sft-rl-flow/
 ## 4. 数据下载与加载规范
 
 - `data/raw/` **只读**，下载后不再修改；派生数据放 `data/processed/`，且必须能由脚本重建。
-- 任何下载都走 `scripts/download_data.py`，必须**幂等**（已存在且 sha256 匹配则跳过）。
+- 外部数据集下载统一走 `scripts/download_data.py`（尚未实现），必须**幂等**。
+  当前 toy 样本由 `scripts/prepare_data.py --toy` 在本地生成，不依赖外部数据集；
+  `--input` 校验用户已有的原始 JSONL 并写入 processed，不修改 raw。
 - 每份数据在 `data/manifest.json` 登记一条：
 
   ```json
@@ -107,10 +113,14 @@ sft-rl-flow/
 
 ## 5. 模型与产物规范
 
-- 权重、checkpoint 一律放 `models/checkpoints/`，**永不入库**。
+- 本地下载的 LoRA adapter 一律放 `models/checkpoints/`，**永不入库**。
+  PyTRIO 的 sampler 权重和完整训练状态保留在云端；本地 run 中的 `checkpoints.json`
+  只记录 `sampler_path` / `state_path`，不能将它们当作本地权重或可互换的 checkpoint。
 - 一次运行一个目录：`outputs/<YYYYMMDD-HHMM>-<algo>-<env>-s<seed>/`
-  内含 `config.yaml` / `metrics.jsonl` / `checkpoints/` / `swanlog/`。
-- checkpoint 命名：`step_{n}.pt` 或 `epoch_{n}/`。
+  实际 run ID 加秒与微秒避免冲突；内含 `config.yaml` / `run.json` / `metrics.jsonl` /
+  `checkpoints.json` / `remote.json` / `cases.jsonl` / `evaluations.jsonl` / `swanlog/`，按需生成。
+- 云端 checkpoint 名称含 run ID 和 step；本地下载文件为 `<checkpoint_id>.zip`。
+  下载入口：`uv run python scripts/cloud.py download --checkpoint-id <ID>`。
 - 删产物前先看目录内容；`outputs/` 里可能有用户唯一的一份实验记录。
 
 ## 6. 日志（SwanLab，不是 wandb）
@@ -134,6 +144,10 @@ sft-rl-flow/
 ## 8. 限制（Limitations）—— 设计前先看
 
 **硬件**
+
+以下显存规模仅约束未来显式选择的本地模型实验；当前实现的 SFT/推理只调用 PyTRIO，
+本地不加载模型权重。云端模型以 `scripts/cloud.py models` 实际返回值为准，
+不受本机 6 GB 显存限制；云端支持范围和额度仍需在正式实验前核实。
 
 - 单卡 **6 GB** 显存、笔记本功耗/散热受限。这是硬约束，不是建议。
 - 7B 模型：**做不到**全参微调或 PPO（actor+critic+ref+reward 四个模型同时驻留）。
@@ -164,6 +178,9 @@ sft-rl-flow/
 5. 不要删除或覆盖 `data/`、`models/`、`outputs/` 的内容。
 6. 发现文档与代码不一致时，改文档，让下一个人拿到唯一真相。
 7. 实验记录写到 `docs/experiments/YYYY-MM-DD-<topic>.md`：假设、配置、结果、结论。
+8. PyTRIO 相关任务先读项目级 [SKILL.md](.agents/skills/pytrio-skill/SKILL.md) 和
+   [SOURCE.md](.agents/skills/pytrio-skill/SOURCE.md)，再按任务读取对应 reference。
+   上游示例的 pip 命令不适用于本仓库，统一使用 uv；不要执行带顶层云端调用的示例做自检。
 
 ## 10. 学习路线
 

@@ -1,52 +1,58 @@
-"""训练入口骨架。
-
-当前只做：加载配置 → 建 run 目录 → 打印。具体算法在后续阶段填进 src/rlflow/algos/。
-
-    uv run python scripts/train.py --config configs/rl/ppo_cartpole.yaml
-"""
+"""本地实验入口：--dry-run 校验准备；SFT 的模型计算仅通过 PyTRIO 执行。"""
 
 from __future__ import annotations
 
 import argparse
-import json
-from datetime import datetime
 
-import yaml
-
-from rlflow.config import load_config
-from rlflow.paths import OUTPUTS_DIR, ensure_dirs
-
-
-def make_run_dir(cfg: dict) -> "object":
-    stamp = datetime.now().strftime("%Y%m%d-%H%M")
-    name = cfg.get("run_name") or f"{cfg.get('algo', 'run')}-{cfg.get('env', {}).get('id', 'task')}"
-    run_dir = OUTPUTS_DIR / f"{stamp}-{name}-s{cfg.get('seed', 0)}"
-    run_dir.mkdir(parents=True, exist_ok=False)
-    return run_dir
+from rlflow.config import apply_overrides, load_config
+from rlflow.data.sft import dataset_path, fingerprint, load_messages
+from rlflow.experiment import Experiment, seed_everything
+from rlflow.remote import connect
+from rlflow.train.sft import train_sft
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", required=True, help="configs/ 下的 YAML 路径")
-    parser.add_argument("--set", action="append", default=[], help="覆盖项，如 train.lr=1e-4")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", required=True)
+    parser.add_argument("--set", action="append", default=[], help="如 model.base_model=模型名")
+    parser.add_argument("--dry-run", action="store_true", help="只校验本地数据/配置，不连接云端")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
-    for item in args.set:
-        key, _, raw = item.partition("=")
-        node = cfg
-        *parents, leaf = key.split(".")
-        for p in parents:
-            node = node.setdefault(p, {})
-        node[leaf] = yaml.safe_load(raw)
-
-    ensure_dirs()
-    run_dir = make_run_dir(cfg)
-    (run_dir / "config.yaml").write_text(
-        yaml.safe_dump(cfg, allow_unicode=True, sort_keys=False), encoding="utf-8"
-    )
-    print(json.dumps({"run_dir": str(run_dir), "config": cfg}, ensure_ascii=False, indent=2))
-    print("\n[骨架] 训练循环尚未实现，下一步见 docs/learning-roadmap.md 阶段 3。")
+    apply_overrides(cfg, args.set)
+    is_sft = cfg["stage"] == "sft" and cfg["algo"] == "sft"
+    rows = []
+    if is_sft:
+        if cfg["execution"]["backend"] != "pytrio":
+            raise ValueError("SFT 仅支持 execution.backend=pytrio")
+        for key in ("epochs", "batch_size", "checkpoint_every"):
+            if not isinstance(cfg["train"][key], int) or cfg["train"][key] <= 0:
+                raise ValueError(f"train.{key} 必须是正整数")
+        if float(cfg["train"]["lr"]) <= 0 or cfg["data"]["max_length"] < 2:
+            raise ValueError("学习率必须为正，max_length 必须至少为 2")
+        if not args.dry_run and not cfg["model"]["base_model"]:
+            raise ValueError("先运行 scripts/cloud.py models，再用 --set model.base_model=模型名")
+        path = dataset_path(cfg["data"]["train"])
+        rows = load_messages(path)
+        cfg["data"]["train_manifest"] = fingerprint(path)
+    elif not args.dry_run:
+        raise NotImplementedError("经典 RL 尚未实现；可用 --dry-run 检查配置并创建快照")
+    experiment = Experiment(cfg, dry_run=args.dry_run)
+    print(f"run_dir={experiment.path}", flush=True)
+    if args.dry_run:
+        experiment.finish("validated")
+        print(f"本地校验通过：{len(rows)} 条 SFT 样本；未连接云端，未计算训练 loss。")
+        return
+    try:
+        seed_everything(cfg["seed"])
+        train_sft(cfg, rows, experiment, connect())
+    except KeyboardInterrupt:
+        experiment.finish("interrupted")
+        raise
+    except Exception:
+        experiment.finish("failed")
+        raise
+    experiment.finish("completed")
 
 
 if __name__ == "__main__":

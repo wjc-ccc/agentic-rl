@@ -23,7 +23,13 @@ load_dotenv(PROJECT_ROOT / ".env", override=False)
 
 
 def _dir(env_var: str, default: str) -> Path:
-    return Path(os.environ.get(env_var, PROJECT_ROOT / default)).expanduser().resolve()
+    return project_path(os.environ.get(env_var) or default)
+
+
+def project_path(path: str | Path) -> Path:
+    """相对路径始终相对仓库根目录，包括 .env 中的目录覆盖。"""
+    path = Path(path).expanduser()
+    return (path if path.is_absolute() else PROJECT_ROOT / path).resolve()
 
 
 DATA_DIR = _dir("RLFLOW_DATA_DIR", "data")
@@ -34,9 +40,3 @@ CONFIGS_DIR = PROJECT_ROOT / "configs"
 RAW_DIR = DATA_DIR / "raw"        # 原始下载，只读
 PROCESSED_DIR = DATA_DIR / "processed"  # 可重建的中间产物
 CHECKPOINTS_DIR = MODELS_DIR / "checkpoints"
-
-
-def ensure_dirs() -> None:
-    """创建运行时目录。空目录不进 git，所以需要用时才建。"""
-    for d in (RAW_DIR, PROCESSED_DIR, CHECKPOINTS_DIR, OUTPUTS_DIR):
-        d.mkdir(parents=True, exist_ok=True)
