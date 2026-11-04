@@ -13,6 +13,7 @@ dependencies = [
     "tqdm>=4.66",
     "rich>=13.9",
     "swanlab>=0.5",
+    "python-dotenv>=1.2.4",
 ]
 
 [project.optional-dependencies]

@@ -14,7 +14,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+# .env 是可选的本地覆盖；已存在的 shell 环境变量优先。
+load_dotenv(PROJECT_ROOT / ".env", override=False)
 
 
 def _dir(env_var: str, default: str) -> Path:

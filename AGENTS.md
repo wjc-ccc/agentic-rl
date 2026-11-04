@@ -30,6 +30,7 @@
 规则：
 
 - `pyproject.toml` 是依赖的唯一声明处，`uv.lock` **必须提交**。
+- 本地配置用 `.env`（从 `.env.example` 复制），由 `rlflow.paths` 自动加载；`.env` 不入库。
 - 解释器版本固化在 `.python-version`（当前 3.12），不要改。
 - 不要在 `.venv` 里手工 `pip install`——会与 lockfile 脱节，下次 `uv sync` 被覆盖。
 - 不要 `pip install --user` 或装到全局环境。
