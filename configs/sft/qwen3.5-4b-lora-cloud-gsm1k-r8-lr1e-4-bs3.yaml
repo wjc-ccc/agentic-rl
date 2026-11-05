@@ -1,0 +1,67 @@
+# 独立完整配置。PyTRIO API；不下载基模权重。
+seed: 42
+device: remote
+stage: sft
+algo: sft
+method: lora
+task: gsm1k-smoke
+execution:
+  backend: cloud
+model:
+  base_model: Qwen/Qwen3.5-4B
+  tokenizer_path: models/tokenizers/qwen3.5-4b
+  cache_dir: models/huggingface
+  local_path: null
+  download_source: modelscope
+  lora_rank: 8
+  train_mlp: true
+  train_attn: true
+  train_unembed: false
+  chat_template_kwargs:
+    enable_thinking: false
+data:
+  name: gsm1k-n24
+  train: gsm1k/n24-s42-v3/sft-train.jsonl
+  eval: gsm1k/n24-s42-v3/sft-eval.jsonl
+  cases: gsm1k/n24-s42-v3/sft-cases.jsonl
+  train_limit: 12
+  eval_limit: 2
+  case_limit: 2
+  max_length: 512
+train:
+  num_train_epochs: 2
+  max_steps: 2
+  per_device_train_batch_size: 3
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 2
+  learning_rate: 1.0e-4
+  lr_scheduler_type: constant
+  warmup_steps: 0.0
+  adam_beta1: 0.9
+  adam_beta2: 0.95
+  adam_epsilon: 1.0e-8
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  eval_strategy: steps
+  eval_steps: 1
+  save_strategy: steps
+  save_steps: 1
+  logging_steps: 1
+  resume_from_checkpoint: null
+  download_checkpoints: true
+  stop_after_steps: null
+  bf16: true
+  fp16: false
+  gradient_checkpointing: true
+  dataloader_num_workers: 0
+  disable_tqdm: false
+sampling:
+  max_tokens: 32
+  temperature: 0.0
+  top_p: 1.0
+  top_k: -1
+  stop: null
+logging:
+  backend: swanlab
+  project: sft-rl-flow
+  mode: cloud

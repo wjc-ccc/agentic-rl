@@ -7,7 +7,7 @@ import json
 import time
 from collections import deque
 
-from rlflow.paths import project_path
+from sft.paths import project_path
 
 
 def main() -> None:

@@ -20,11 +20,12 @@ dependencies = [
 # Heavy LLM post-training stack. Install only when you reach that stage:
 #   uv sync --extra llm
 llm = [
-    "transformers>=4.46",
+    "transformers>=5.22.1,<6",
     "datasets>=3.1",
     "accelerate>=1.1",
     "peft>=0.13",
-    "trl>=0.13",
+    "trl>=1.17.1,<2",
+    "modelscope>=1.40.2",
 ]
 cloud = [
     "pytrio==0.2.9",
@@ -61,6 +62,11 @@ pythonpath = ["src"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["sft", "sft.*", "rl", "rl.*"]
+namespaces = false
 
 [build-system]
 requires = ["setuptools>=68"]

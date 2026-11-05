@@ -1,138 +1,67 @@
 # sft-rl-flow
 
-从经典强化学习到 LLM 后训练的**渐进式学习仓库**：每个阶段都有一个能跑通的最小实验，
-讲清楚"为什么这么做"，而不只是"调用了哪个库"。
+SFT 的 cloud/local 使用同一份 messages JSONL、编码规则、评测和实验命名。
+YAML 的 `execution.backend` 选择 PyTRIO API 或本地 TRL SFTTrainer，训练、评测、保存和续训参数都在 `train`。
+当前实现 LoRA SFT；RL 独立备用，PPO/GRPO 与 QLoRA 不提供训练入口。
 
-> 详细的工作规范、目录约定与硬件限制见 [`AGENTS.md`](AGENTS.md)。
-> 学习路径见 [`docs/learning-roadmap.md`](docs/learning-roadmap.md)。
+- [项目约束](AGENTS.md)、[数据约束](data/AGENTS.md)
+- [真实实验模板](docs/experiments/TEMPLATE.md)
+- [本次实际流程验证](docs/experiments/2026-11-05-sft-gsm1k-smoke.md)
 
-## 当前状态
-
-- [x] uv + venv 环境、git 版本管理、GitHub 远端
-- [x] 项目级 PyTRIO skill；本地数据/实验/日志/case，云端模型计算的 SFT 路径
-- [ ] 配置 PyTRIO 账号与支持模型，验证一次真实云端训练和推理
-- [ ] 阶段 1：表格型 RL（Q-Learning / SARSA）跑通 CartPole 之外的离散环境
-- [ ] 阶段 2：策略梯度 → PPO（连续控制）
-- [ ] 阶段 3：SFT（小模型 + LoRA）
-- [ ] 阶段 4：偏好对齐（DPO / GRPO）
-
-## 快速开始
+本机 6GB 显卡用 Qwen2.5-0.5B-Instruct。云端用 Qwen3.5-4B，仅上传 token 数据请求，不创建服务器、不下载基模权重。
+SwanLab 与 JSONL 记录在本地控制；云端 adapter 自动下载到本地，密钥仅放 `.env` 或登录状态。
 
 ```powershell
-uv sync                      # 创建 .venv 并安装依赖
-uv run pytest                # 环境自检
-uv run python scripts/train.py --config configs/rl/ppo_cartpole.yaml --dry-run
+uv sync --extra cloud --extra llm
+uv run python data/download_data/download_gsm1k_40/run.py --config configs/data/gsm1k_40.yaml
+uv run python data/process_data/process_gsm1k_pipeline/run.py --config configs/data/gsm1k_40.yaml
+uv run python scripts/check_data.py
 ```
 
-需要 LLM 相关依赖（transformers / trl / peft）时：
+GSM1K 固定 revision：取前 40 条，按问题长度分层选 24 条，分为 16 train / 4 eval / 4 cases。
+本地默认取训练集 4 条，云端取 12 条。上游只有 test split、license unknown，已获用户允许用于少量流程测试；不作为正式基准。
+处理数量、seed、划分在数据 YAML；变更处理规则时指定新的 `selection.output_version`，不覆盖已有数据。
 
 ```powershell
-uv sync --extra llm
-```
+# 本地：下载约 1GB 基模，再运行训练
+uv run python scripts/download_model.py --config configs/sft/qwen2.5-0.5b-instruct-sft-lora-local-gsm1k-lr1e-4.yaml
+uv run python scripts/train.py --config configs/sft/qwen2.5-0.5b-instruct-sft-lora-local-gsm1k-lr1e-4.yaml
 
-经典 RL 仍为骨架，只有 `--dry-run`，不执行本地训练。当前新增的可执行训练路径是云端 SFT。
-
-## 本地编排 + 云端计算
-
-```mermaid
-flowchart LR
-  A[本地原始数据] --> B[校验 / tokenize / mask]
-  B --> C[本地训练循环与参数控制]
-  C -->|token batch| D[PyTRIO 云端模型前向 / 反向 / 优化器]
-  D -->|logprob / checkpoint 引用| E[本地指标 / SwanLab offline]
-  F[本地固定 case] -->|prompt token| G[PyTRIO 云端推理]
-  D --> G
-  G -->|生成结果| H[本地 case 查看]
-  D -->|主动下载 LoRA adapter| I[本地 models/checkpoints]
-```
-
-无需将整个仓库或原始数据目录上传到 PyTRIO，SDK 会发送构造后的 token batch。
-权重和训练状态保存在云端，本地保存引用；下载的是 PEFT LoRA adapter ZIP。
-指标和 case 始终保存在本地；当前配置保留用户选择的 SwanLab `mode: cloud`，
-需要认证才能上传。只在本地记录时，将 YAML 的 `logging.mode` 改为 `offline`；
-`.env` / shell 的 `SWANLAB_MODE` 优先于 YAML。
-
-先运行不需要账号、模型或网络的本地准备：
-
-```powershell
-uv run python scripts/prepare_data.py --config configs/sft/pytrio_toy.yaml --toy
-uv run python scripts/train.py --config configs/sft/pytrio_toy.yaml --dry-run
-```
-
-`--dry-run` 只校验数据格式和配置并写快照，不下载 tokenizer、不校验模型特有 mask、
-不执行云端调用，也不生成训练指标。数据文件相同则跳过，不同则拒绝覆盖。
-
-账号准备好后，在本地登录并选择服务当前支持的模型：
-
-```powershell
-uv sync --extra cloud
+# 云端：只下载 tokenizer，登录后训练
+uv run python scripts/download_model.py --config configs/sft/qwen3.5-4b-lora-cloud-gsm1k-r8-lr1e-4-bs3.yaml --tokenizer-only
 uv run trio login
-uv run python scripts/cloud.py models
-uv run python scripts/train.py --config configs/sft/pytrio_toy.yaml --set "model.base_model=<查询返回的模型名>"
+uv run python scripts/train.py --config configs/sft/qwen3.5-4b-lora-cloud-gsm1k-r8-lr1e-4-bs3.yaml
 ```
 
-## 独立配置与调参
+下载源由 `model.download_source` 选择 modelscope/huggingface；HF 镜像可用进程环境变量 `HF_ENDPOINT`。
+数据下载会依次尝试直连、系统代理和配置中的镜像，并保留真实来源与下载回执。
+训练前可加 `--dry-run`；只校验配置、数据与快照，不初始化 SwanLab 或连接模型。
 
-RL 和 SFT 各自使用完整 YAML，没有公共 base 或 `defaults` 继承：
-
-| 配置 | 用途 |
-|---|---|
-| `configs/rl/ppo_cartpole.yaml` | PPO 的环境、折扣率、GAE、clip 等参数 |
-| `configs/sft/pytrio_toy.yaml` | 未选模型时的数据准备与离线验证 |
-| `configs/sft/qwen3.5-4b-lora-r8-lr1e-4-bs1.yaml` | 按模型、LoRA rank、学习率、batch 命名的独立示例 |
-
-SFT 常调项：`model.base_model`、`model.lora_rank`、LoRA 训练层开关、`data.max_length`、
-`train.lr`、`train.batch_size`、`train.epochs`、保存频率、`optimizer.weight_decay`、
-`optimizer.grad_clip_norm`、Adam betas / eps 和 `sampling` 生成参数，全部实际接入执行代码。
-当前 PyTRIO SDK 无 4bit、LoRA alpha/dropout 配置入口，因此示例不标注这些参数。
-Qwen 配置是模型选择示例，正式训练前仍需查询当前服务支持列表。
-
-复制一份配置做固定实验时，同步修改文件名和 `run_name`。临时覆盖示例（只做离线验证）：
+`--set train.learning_rate=1.25e-4` 等覆盖会进入快照及自动命名。
+旧 `lr/epochs/batch_size/checkpoint_every` 不再使用；`max_steps > 0` 时覆盖 epoch 的训练预算。
+`warmup_steps` 遵循当前锁定 Trainer：小于 1 的小数表示总步数比例，整数表示更新次数。
+评测与保存支持 no/steps/epoch；logging_steps 控制日志频率，示例为每次更新记录。
+云端不使用的硬件参数在启动时列出；alpha/dropout 仅本地配置。配置只检查必需字段，允许附加元数据。
 
 ```powershell
-uv run python scripts/train.py --config configs/sft/qwen3.5-4b-lora-r8-lr1e-4-bs1.yaml --dry-run --set train.lr=2e-4 --set train.batch_size=2 --set optimizer.weight_decay=0.01 --set optimizer.grad_clip_norm=1.0 --set run_name=qwen3.5-4b-lora-r8-lr2e-4-bs2
+# stop_after_steps 在更新边界保存后停止，便于验证完整续训
+uv run python scripts/train.py --config <配置.yaml> --set train.stop_after_steps=1
+uv run python scripts/train.py --config <同一配置.yaml> --set train.resume_from_checkpoint=models/checkpoints/<来源run_id>/checkpoint-1
+
+uv run python scripts/inspect_run.py --run outputs/<run_id> --kind metrics
+uv run python scripts/inspect_run.py --run outputs/<run_id> --kind cases
+uv run python scripts/sample.py --run outputs/<run_id>
+uv run python scripts/cloud.py download --run outputs/<云端run_id> --step 2
 ```
 
-外部数据下载脚本放在 `data/download_data/`，命名为 `download_<数据集名>_<数据量>.py`；
-例如 `download_gsm8k_1000.py`（仅命名示例）。数据写入 `data/raw/`，规则见
-[`docs/data-downloads.md`](docs/data-downloads.md)。
+outputs 保存完整配置、数据 hash、指标、case、SwanLab 链接和 checkpoint 索引。
+checkpoint 保存于 `models/checkpoints/<run_id>/checkpoint-<step>/`；目录名含 SFT、backend、模型、数据集、lr、epoch、LoRA rank、batch、累积、长度、seed、hash 和月日时间。
 
-将 `<run目录>` 替换为训练入口实际打印的绝对目录；监控命令可在第二个终端运行：
+本地保存原生 Trainer 的 adapter、优化器、scheduler、RNG 与进度；云端保存完整 state URI、sampler URI、scheduler、数据游标和 RNG，并通过 SDK 下载 TAR、核验内容 hash。
+恢复总是新建运行目录，校验 backend、参数、数据和 tokenizer，保留来源产物；sampler URI 只用于推理。
+下载失败会停止并保留可恢复 checkpoint，不重放已完成的更新。实际计费以服务方为准，代码只记请求 token 用量。
 
 ```powershell
-uv run python scripts/inspect_run.py --run <run目录> --kind metrics --watch
-uv run python scripts/sample.py --run <run目录> --base
-uv run python scripts/sample.py --run <run目录>
-uv run python scripts/inspect_run.py --run <run目录> --kind cases
-uv run python scripts/cloud.py checkpoints
-uv run python scripts/cloud.py download --checkpoint-id <权重ID>
+uv run pytest
+uv run ruff check src scripts tests data/download_data data/process_data
 ```
-
-`Ctrl+C` 停止本地训练循环；已完成的云端更新和已保存的 checkpoint 保留，当前请求可能仍在云端完成。
-本地程序结束后不会自动继续后续 batch。完整职责、数据格式和产物说明见
-[`docs/local-cloud-architecture.md`](docs/local-cloud-architecture.md)。
-
-项目 skill 位于 [`.agents/skills/pytrio-skill/SKILL.md`](.agents/skills/pytrio-skill/SKILL.md)，
-固定上游 0.2.2，安装来源与项目规则见 [SOURCE.md](.agents/skills/pytrio-skill/SOURCE.md)。
-Codex 下一轮可发现该项目级 skill，不涉及 `-g` 全局安装。
-
-## 目录
-
-| 路径 | 用途 | 进 git |
-|---|---|---|
-| `src/rlflow/` | 可复用算法与环境代码 | ✅ |
-| `.agents/skills/` | 项目级 PyTRIO skill 与上游许可证 | ✅ |
-| `configs/` | 实验配置（YAML） | ✅ |
-| `scripts/` | 下载数据、跑实验等入口 | ✅ |
-| `notebooks/` | 探索性分析 | ✅ |
-| `docs/` | 笔记、路线图、实验记录 | ✅ |
-| `data/` | 原始/处理后数据 | ❌ |
-| `models/` | 权重与 checkpoint | ❌ |
-| `outputs/` | 每次 run 的日志与产物 | ❌ |
-
-## 环境
-
-- Python 3.12（由 uv 管理）
-- 现有 PyTorch + CUDA 12.8 学习依赖保留；云端 SFT/推理不在本机加载模型
-- PyTRIO SDK 通过 `cloud` extra 安装并由 `uv.lock` 锁定
-- 实验跟踪：SwanLab（当前 YAML 显式选择 cloud，可切换 offline）

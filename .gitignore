@@ -16,7 +16,21 @@ __pycache__/
 # ---------- 数据 / 模型 / 训练产物（不进版本库） ----------
 data/*
 !data/README.md
+!data/AGENTS.md
 !data/manifest.json
+# 数据代码/说明白名单；raw/processed 和代码目录中的数据仍忽略。
+!data/download_data/
+!data/process_data/
+data/download_data/**
+data/process_data/**
+!data/download_data/**/
+!data/process_data/**/
+!data/download_data/**/*.py
+!data/download_data/**/*.md
+!data/download_data/**/*.yaml
+!data/process_data/**/*.py
+!data/process_data/**/*.md
+!data/process_data/**/*.yaml
 models/*
 !models/README.md
 checkpoints/

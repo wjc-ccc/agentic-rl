@@ -1,197 +1,125 @@
 # AGENTS.md — sft-rl-flow
 
-> 本文件是本仓库对所有 AI agent（Claude Code / Codex / Cursor / Copilot）的工作契约。
-> **动手前先读完。** 与本文冲突的临时指令，先向用户确认。
+本文件是所有编码 agent 的项目约束。只修改用户要求的内容，先检查现状，不猜测数据、路径或实验结果。
 
-## 0. 这个仓库是什么
+## 职责与目录
 
-一个**学习导向**的后训练（post-training）实验仓库：从经典强化学习（gymnasium 小环境）
-一路走到 LLM 的 SFT → 偏好对齐（DPO / PPO / GRPO）最小可运行流程。
+当前只做 SFT：本地负责数据准备、实验循环、指标监控、case 和下载。
+`execution.backend: cloud` 使用 PyTRIO API 执行训练与推理；`local` 使用本机或 GPU 服务器上的 TRL SFTTrainer。
+RL 阶段仅备用。两阶段的参数、配置加载、数据类型、模型 client 和实验记录实现完全分开，不建立共享层。
 
-目标不是刷榜，而是：**每一步都能跑通、能解释、能复现**。
-
-- 当前阶段：本地实验控制 + PyTRIO 云端 SFT 最小闭环（真实云端实验待账号/模型配置）
-- 硬件：本地 RTX 3060 Laptop **6 GB**；模型计算在 PyTRIO 云端，见 §8 的适用范围
-- 仓库：https://github.com/wjc-ccc/agentic-rl
-
-## 1. 环境与依赖管理
-
-**只使用 uv + `.venv`。** 不要用 pip、conda、系统 Python 装包。
-
-| 目的 | 命令 |
+| 内容 | 唯一位置 |
 |---|---|
-| 安装/同步全部依赖 | `uv sync` |
-| 安装 LLM 相关重型依赖 | `uv sync --extra llm` |
-| 安装 PyTRIO 云端客户端与 tokenizer 依赖 | `uv sync --extra cloud` |
-| 运行任何脚本 | `uv run python scripts/xxx.py` |
-| 跑测试 | `uv run pytest` |
-| 新增依赖 | `uv add <pkg>` / `uv add --dev <pkg>` |
-| 升级全部依赖 | `uv lock --upgrade && uv sync` |
+| 完整、独立的 RL / SFT 实验配置 | `configs/rl/`、`configs/sft/` |
+| SFT 数据、方法加载、LoRA 训练、固定 case 评测 | `src/sft/`；方法目录 `lora/`、`qlora/` |
+| RL 独立的备用配置解析、数据类型和方法说明 | `src/rl/`；`ppo/`、`grpo/` 尚无实现 |
+| SFT 配置、登记、实验记录、PyTRIO client 和归档 | `src/sft/` 内自己的模块 |
+| SFT 路径和环境变量加载 | `src/sft/paths.py`，只读取 `SFT_` 目录参数 |
+| 当前 SFT 的训练、采样、监控、核验、云端管理 CLI | `scripts/`，不路由 RL |
+| 数据获取与处理代码、实际数据和登记 | `data/`，必须先读 [data/AGENTS.md](data/AGENTS.md) |
+| 本地基模 / tokenizer、完整 checkpoint 或云端下载的 adapter | `models/base/`、`models/tokenizers/`、`models/checkpoints/<run_id>/checkpoint-<step>/` |
+| 单次运行的配置、日志、指标、case、云端 checkpoint 引用 | `outputs/<run_id>/` |
+| 探索代码 / 研究资料 | `notebooks/`、`search/research/` |
+| 实际实验的结果分析 | `docs/experiments/`，按下述规则创建 |
 
-规则：
+不要在根目录散放脚本，不把数据 pipeline 放进 `scripts/`，不跨目录导入 CLI。
+`sft`、`rl` 是两个完全独立的顶层包；禁止互相导入、禁止建立 rlflow/common 等共享业务层。
+当前需要的实现都放在 sft 内；RL 不复制未使用的模型 client 或实验框架来充当已完成能力。
+不要把业务代码放进 `src/sft_rl_flow.egg-info/`，它由 uv/setuptools 自动生成并忽略。
+SFT 路径从 `sft.paths` 获取；RL 的备用位置只由 `rl.paths` 定义。禁止跨阶段读取路径和参数。
+禁止写死本机绝对路径或依赖 CWD。
+未经要求不搬移、重命名、覆盖或删除已有数据、权重、outputs。
 
-- `pyproject.toml` 是依赖的唯一声明处，`uv.lock` **必须提交**。
-- 本地配置用 `.env`（从 `.env.example` 复制），由 `rlflow.paths` 自动加载；`.env` 不入库。
-- 解释器版本固化在 `.python-version`（当前 3.12），不要改。
-- 不要在 `.venv` 里手工 `pip install`——会与 lockfile 脱节，下次 `uv sync` 被覆盖。
-- 不要 `pip install --user` 或装到全局环境。
+## 环境与配置
 
-## 2. 目录地图
+- 只用 uv 和项目 `.venv`；Python 版本遵循 `.python-version`，不改版本，不使用 pip / conda / 系统安装。
+- 同步依赖：`uv sync`；云端客户端：`uv sync --extra cloud`；新增依赖：`uv add`。
+  `pyproject.toml` 是唯一依赖声明，`uv.lock` 随依赖变更提交。
+- 脚本用 `uv run python <入口>`，测试用 `uv run pytest`。源码与配置统一 UTF-8。
+- 每个 YAML 写全参数，RL 与 SFT 不继承、不合并、不使用 `defaults` 或公共 base。
+  两阶段各自读取配置并检查阶段标记。SFT 在应用 --set 后只检查一次必需参数是否存在，
+  缺项报告参数路径；不维护字段白名单，不做类型/范围检查，不拦截额外字段，不补默认值。
+  参数使用 Trainer 风格名称；不保留 epochs/lr/batch_size/checkpoint_every 别名。
+  LoRA alpha/dropout 仅 local 接入；cloud YAML 不配置 SDK 不支持的 4bit、alpha/dropout。
+  后端不使用的硬件、下载等字段在启动时列明并写入快照。
+- RL 配置命名 `<算法>_<环境>.yaml`；SFT 示例 `qwen3.5-4b-lora-cloud-gsm1k-r8-lr1e-4-bs3.yaml`。
+  实际运行与产物名称使用覆盖后的真实参数，不凭手写标签推断参数。
+- 配置包含 `seed/device/stage/algo/env或task/train/logging`；随机种子显式设置。
+  每个 run 保存有效完整配置和所用数据 hash，不能只保存配置文件名。
+- 密钥只放 `.env` 或登录状态，不写入 YAML、日志、快照或 Git。
+- 日志只用 SwanLab，模式由 YAML 显式指定；当前 SFT 的覆盖只读 `SFT_SWANLAB_MODE/PROJECT`，
+  YAML 保留用户选择的 cloud，纯本地可设 offline。RL 不读取这些 SFT 参数。
+  指标每步写入本地 JSONL；不引入 wandb / tensorboard / mlflow。
+- 实验启动顺序固定为读取配置 → --set → 一次参数检查 → 准备数据 → 运行目录与快照 →
+  SwanLab init(config=实际配置) → 模型连接与训练。每步记录 loss，结束/失败时 finish。
+  dry-run 不初始化 SwanLab、不连接模型。训练方法不再自行初始化日志。
+- 模型计算默认在云端。本地显卡 6 GB 不作为云端模型限制；本地模型实验需用户明确要求。
+  本次已按用户要求提供 Qwen2.5-0.5B-Instruct 的本地 LoRA 配置；local 不初始化 PyTRIO。
+  不引入 DDP、多机、DeepSpeed 或大型训练框架。
+- PyTRIO 任务先读 [.agents/skills/pytrio-skill/SKILL.md](.agents/skills/pytrio-skill/SKILL.md) 和对应 reference。
+  Skill 保持项目级，版本 0.2.2，上游 commit `cea3edbe1d6a8fbdb61c2e2ab3975b7806e1fa23`；
+  使用锁定 SDK 的实际签名，示例中的 pip 命令改用 uv，不执行带顶层云端调用的示例做自检。
+- sampler 权重与完整训练状态用途不同，本地分别保存引用；下载的是 LoRA adapter，不是完整基模。
 
-```
-sft-rl-flow/
-├── AGENTS.md              # 本文件，agent 入口
-├── CLAUDE.md              # 导入本文，供 Claude Code 自动加载
-├── README.md              # 人类入口
-├── Goal.md                # 用户的阶段性目标（会变，先读）
-├── .agents/skills/         # 项目级 skill，随仓库版本管理
-├── pyproject.toml         # 依赖声明
-├── uv.lock                # 锁定版本，必须提交
-├── .python-version        # 3.12
-├── configs/               # 实验配置（YAML）
-│   ├── rl/                # 完整、独立的经典 RL 配置
-│   └── sft/               # 完整、独立的模型 / LoRA / 调参配置
-├── src/rlflow/            # 可复用库代码（唯一可被 import 的包）
-│   ├── paths.py           # 所有路径的唯一来源
-│   ├── experiment.py      # 本地 run、配置快照和指标日志
-│   ├── remote.py          # PyTRIO 连接、模型检查、LoRA 下载
-│   ├── envs/              # 环境封装 / 自定义 gymnasium env
-│   ├── algos/             # 算法实现（q_learning, ppo, grpo ...）
-│   ├── data/              # 数据集加载与预处理
-│   ├── train/             # 本地训练循环，模型计算通过 PyTRIO 云端执行
-│   └── eval/              # 云端采样，本地保存 case
-├── scripts/               # 实验、数据准备和云端管理 CLI
-├── notebooks/             # 探索性分析，可随意，不要求整洁
-├── tests/                 # 冒烟测试
-├── docs/                  # 学习笔记、路线图、实验记录
-├── data/                  # 【gitignored】download_data/ 下载脚本，raw/ 原始数据，processed/ 派生数据
-├── models/                # 【gitignored】权重与 checkpoints
-└── outputs/               # 【gitignored】每次 run 的日志、指标、配置快照
-```
+## 方法与模型 Interface
 
-**判断代码放哪：** 可复用逻辑 → `src/rlflow/`；实验 CLI → `scripts/`；
-外部数据下载入口 → `data/download_data/`；边看边试 → `notebooks/`。
+- SFT 配置显式指定 `stage: sft`、`algo: sft`、`method: lora`；
+  `sft.load_method(method, backend)` 返回 `train(cfg, rows, experiment, client)`。
+  `sft.prepare(cfg)` 只读取、校验数据并记录训练文件 hash；参数检查由入口负责。
+- RL 的 `stage: rl`、`algo: ppo/grpo` 只用于备用目录，数据接口在 `rl.data`。
+  LoRA SFT 已实现；QLoRA 当前无 PyTRIO 量化入口；PPO/GRPO 训练尚未实现。
+  未实现方法应在创建 client/run 前明确拒绝，不静默退化到其他算法。
+  当前没有 RL 执行入口；即使 --dry-run，SFT train.py 也不得读取 RL 配置。
+- cloud SFT 模型入口：`sft.model_client.PyTrioClient(cfg, service=...)`。
+  训练方法使用 tokenizer、start_training、forward、optim_step、sample、save_sampler/save_state；
+  PyTRIO 类型、numpy 转换与 future 等待封装在 client。测试可注入 SDK 替身。
+- client 不重复校验配置、batch 或调用顺序，不预查模型列表，不包装 ImportError；错误直接抛出。
+  数据格式只在读取处检查，token 右移、mask、前缀和长度约束只在编码处检查。
+  仍保留真实文件不覆盖、hash 校验与 checkpoint 归属匹配这些业务约束。
+- SFT 共享完整 token 与监督 mask，只监督最后 assistant 和结束标记；cloud 右移一次，local labels 不预先右移。
+  两端训练 loss 按完整梯度累积 batch 的有效监督 token 归一，评测按监督 token 加权。
+  SFT `TrainingDatum` 只包含等长 input_tokens/target_tokens/weights，forward 固定 cross_entropy，
+  返回逐 target 的 logprob。不为备用 RL 增加 importance_sampling、advantage 等参数。
+  `Generation` 包含 text/tokens/logprobs；sampler/state 保存方法分别返回云端 URI。
+  具体数据行、token 右移、client 输入输出与保存路径示例放对应模块 docstring，保持与实现一致。
 
-## 3. 配置规范
+## 产物命名
 
-- 所有超参数写在 `configs/**/*.yaml`，**代码里不写死**。
-- 每个 YAML 必须独立写全参数；不使用公共 base 或 `defaults` 继承，不在加载器中补默认值。
-- RL 命名：`configs/rl/{算法}_{环境}.yaml`，例：`ppo_cartpole.yaml`。
-- SFT 调参命名：`configs/sft/<模型>-lora-r<rank>-lr<学习率>-bs<batch_size>.yaml`，
-  例：`qwen3.5-4b-lora-r8-lr1e-4-bs1.yaml`；`pytrio_toy.yaml` 保留用于未选模型的离线验证。
-  复制调参配置时同步修改文件名和 `run_name`；临时 `--set` 覆盖以配置快照为准。
-- 仅声明执行路径实际支持的超参数；当前 PyTRIO 无 4bit、LoRA alpha/dropout 入口，不能添加空字段。
-- 必须包含这些顶层键：`seed`、`device`、`stage`、`algo`、`env|task`、`train`、`logging`。
-- 每个 run 启动时把**应用命令行覆盖后的完整配置**快照写入 `outputs/<run_id>/config.yaml`，
-  否则该实验视为不可复现。
-- 随机种子必须显式设置（numpy / torch / gymnasium / python random），写一次工具函数到处复用。
+- SFT 参数名自动生成：`sft-<method>-<backend>-<模型>-<数据集>-lr<lr>-ep<epochs>-r<rank>-bs<batch>-ga<累积>-len<长度>-s<seed>-cfg<8位hash>`。
+  使用 `--set` 后的实际值，短 hash 区分其余参数与训练数据 hash；排除日志选项和本机绝对路径。
+  不手写 `run_name`，由运行入口自动写入完整配置快照。
+- outputs：`outputs/<参数名>-<MMDD-HHMMSS>/`，同秒重名时加微秒，不覆盖旧目录。
+- 云端 checkpoint：`<run_id>-step-000003-sampler` / `...-state`；step 是已完成的优化器更新次数。
+  本地 `checkpoints.json` 分别记录 step、名称、sampler/state 引用，不把它们当成本地文件。
+- checkpoint 放 `models/checkpoints/<run_id>/checkpoint-<step>/`；cloud 的 `adapter.tar` 和 `download.json` 记录实际模型、
+  run/step、云端 checkpoint ID、sampler URI、sha256 与大小。
+  命令：`uv run python scripts/cloud.py download --run <run目录> --step 3`。
+  按该云端训练 session 的 sampler URI 匹配真实 ID；不猜 ID，不把完整训练状态当成 adapter。
+- `train` 统一配置 eval/save/logging、resume 与自动下载；step 指完成的优化器更新。
+  正常结束及 stop_after_steps 在更新边界保存最后状态；中断后从已成功保存的 checkpoint 恢复。
+  `train.resume_from_checkpoint` 指向本地 checkpoint 目录，恢复新建 run，不覆盖来源。
+  local 使用 Trainer 的 adapter/optimizer/scheduler/RNG/数据跳过；cloud 使用完整 state URI 与优化器恢复，
+  同时恢复本地 scheduler、epoch、数据游标和 RNG。恢复核对 backend、模型/训练参数、数据 hash 和 tokenizer。
+  sampler URI 不能完整续训；下载失败保留已完成状态并停止，不重放更新、不自动重试不确定的 optim_step。
+  每个 cloud checkpoint 记录原所属 training session，下载按该 session 匹配真实 ID。
+  实际运行产物及旧名称必须保留；训练/采样 token 数只记录请求用量，不推算收费。
 
-## 4. 数据下载与加载规范
+## 修改与验证
 
-- `data/raw/` **只读**，下载后不再修改；派生数据放 `data/processed/`，且必须能由脚本重建。
-- 外部数据集下载代码放在 `data/download_data/`，文件名为
-  `download_<数据集名>_<数据量>.py`；数据量表示样本条数（如 `1000`、`10k`、`all`）。
-  下载必须**幂等**，输出原始文件到 `RAW_DIR`，不把下载的数据放进脚本目录。
-  当前未指定外部数据集，尚无具体下载脚本；详细约定见 `docs/data-downloads.md`。
-  当前 toy 样本由 `scripts/prepare_data.py --toy` 在本地生成，不依赖外部数据集；
-  `--input` 校验用户已有的原始 JSONL 并写入 processed，不修改 raw。
-- 每份数据在 `data/manifest.json` 登记一条：
+1. 修改前检查 Git 状态、相关代码和配置；数据任务还要读数据约束、manifest 并核查实际目录。
+2. 先说明假设、改动范围和验证标准。只实现本次需要的内容，不顺手重构或添加抽象。
+3. 不覆盖其他未提交改动。只删除本次改动产生的孤儿代码，原有无关死代码不动。
+4. 代码改完跑 `uv run pytest` 和相关入口；数据改动运行 `uv run python scripts/check_data.py`。
+   报告真实输出，失败与未验证项如实说明。
+5. 主分支保持可运行；在 `feat/` 或 `exp/` 分支工作，不 force push main，不改写已推送历史。
+   提交信息使用 `type(scope): 摘要`。
+6. 不提交 raw/processed 实际数据、权重、outputs、swanlog、.venv、.env 或数据缓存。
+   数据代码与 manifest 可按现有白名单提交；提交前检查暂存路径与体积，不用强制添加绕过规则。
 
-  ```json
-  {
-    "name": "cartpole-v1",
-    "source": "https://...",
-    "sha256": "…",
-    "bytes": 12345,
-    "license": "MIT",
-    "local_path": "data/raw/cartpole-v1.npz",
-    "downloaded_at": "2026-11-04T12:00:00+08:00"
-  }
-  ```
+## 文档与实验记录
 
-- 加载数据的代码一律：
-
-  ```python
-  from rlflow.paths import RAW_DIR, PROCESSED_DIR
-  ```
-
-  **禁止**在代码里出现绝对路径或依赖当前工作目录的相对路径（notebook 和 scripts 的 CWD 不同）。
-- 数据集体积 > 10 MB 或含敏感/受限内容 → 绝不入库，只登记 manifest。
-- 新数据集先确认许可证，不确定就问用户。
-
-## 5. 模型与产物规范
-
-- 本地下载的 LoRA adapter 一律放 `models/checkpoints/`，**永不入库**。
-  PyTRIO 的 sampler 权重和完整训练状态保留在云端；本地 run 中的 `checkpoints.json`
-  只记录 `sampler_path` / `state_path`，不能将它们当作本地权重或可互换的 checkpoint。
-- 一次运行一个目录：`outputs/<YYYYMMDD-HHMM>-<algo>-<env>-s<seed>/`
-  实际 run ID 加秒与微秒避免冲突；内含 `config.yaml` / `run.json` / `metrics.jsonl` /
-  `checkpoints.json` / `remote.json` / `cases.jsonl` / `evaluations.jsonl` / `swanlog/`，按需生成。
-- 云端 checkpoint 名称含 run ID 和 step；本地下载文件为 `<checkpoint_id>.zip`。
-  下载入口：`uv run python scripts/cloud.py download --checkpoint-id <ID>`。
-- 删产物前先看目录内容；`outputs/` 里可能有用户唯一的一份实验记录。
-
-## 6. 日志（SwanLab，不是 wandb）
-
-- 训练日志用 **SwanLab**：`import swanlab; swanlab.init(project="sft-rl-flow", ...)`。
-- 日志模式由每份配置显式指定；当前用户已选择 `logging.mode=cloud`。
-  仅本地记录时设 `offline`，日志落在 run 内的 `swanlog/`；cloud 模式需要认证。
-  `.env` / shell 的 `SWANLAB_MODE` 优先于 YAML。
-- **不要**引入 wandb / tensorboard / mlflow。
-- 关键指标（reward、loss、KL、entropy、eval return）每个 epoch/step 都记录，不要只在最后打印。
-
-## 7. Git 规范
-
-- 主分支 `main` 保持可运行；实验性改动开分支 `feat/xxx`、`exp/xxx`。
-- 提交信息：`type(scope): 摘要`，type ∈ feat/fix/exp/docs/chore/refactor。
-- **绝不提交**：`data/`、`models/`、`outputs/`、`swanlog/`、`.venv/`、`.env`、
-  任何 `*.pt/*.bin/*.safetensors/*.jsonl/*.parquet`。
-- 不要为了让文件能提交而修改 `.gitignore`；大文件用 Git LFS 的方案也要先问用户。
-- 提交前自查：`git status` 里不应出现上述路径；`git diff --cached --stat` 确认体积。
-- 不 force push `main`，不改写他人已推送的历史。
-
-## 8. 限制（Limitations）—— 设计前先看
-
-**硬件**
-
-以下显存规模仅约束未来显式选择的本地模型实验；当前实现的 SFT/推理只调用 PyTRIO，
-本地不加载模型权重。云端模型以 `scripts/cloud.py models` 实际返回值为准，
-不受本机 6 GB 显存限制；云端支持范围和额度仍需在正式实验前核实。
-
-- 单卡 **6 GB** 显存、笔记本功耗/散热受限。这是硬约束，不是建议。
-- 7B 模型：**做不到**全参微调或 PPO（actor+critic+ref+reward 四个模型同时驻留）。
-- 现实上限：Qwen2.5-0.5B / 1.5B + LoRA + bf16 + gradient checkpointing + grad accumulation，
-  batch size 通常 1–2。显存不够时优先降 batch，不要降 correctness。
-- 单机单卡：不做 DDP / 多机；不引入 DeepSpeed。
-
-**Windows**
-
-- vLLM 无原生 Windows 支持；flash-attn 编译困难。生成用 HF `generate()` 或 `torch.compile`，
-  需要吞吐时再考虑 WSL2。
-- 路径/编码注意：源码和配置文件统一 UTF-8；命令行避免中文路径。
-- 环境变量里存在一个无效的 `SSL_CERT_FILE`（指向不存在的 anaconda 证书），
-  uv 会警告并忽略；若 `curl`/`git` 出现证书错误，先查这个变量。
-
-**方法论**
-
-- 不做多 seed 显著性检验的结论一律标为"初步观察"，不写进 README 当结论。
-- 不复制粘贴别人的训练脚本而不理解；每个新增算法先在 toy 环境验证。
-- 不为"看起来先进"而引入框架（RLlib、verl、OpenRLHF 等），先手写最小实现。
-
-## 9. Agent 工作守则
-
-1. 改代码前先读本文件 + `Goal.md` + 相关 `configs/`。
-2. 一次只做一件事；改完跑 `uv run pytest` 和相关脚本，**报告真实输出**，失败就说失败。
-3. 新增依赖走 `uv add`，并在提交信息里说明为什么需要。
-4. 不确定的路径/数据/许可，问用户，不要猜。
-5. 不要删除或覆盖 `data/`、`models/`、`outputs/` 的内容。
-6. 发现文档与代码不一致时，改文档，让下一个人拿到唯一真相。
-7. 实验记录写到 `docs/experiments/YYYY-MM-DD-<topic>.md`：假设、配置、结果、结论。
-8. PyTRIO 相关任务先读项目级 [SKILL.md](.agents/skills/pytrio-skill/SKILL.md) 和
-   [SOURCE.md](.agents/skills/pytrio-skill/SOURCE.md)，再按任务读取对应 reference。
-   上游示例的 pip 命令不适用于本仓库，统一使用 uv；不要执行带顶层云端调用的示例做自检。
-
-## 10. 学习路线
-
-见 [`docs/learning-roadmap.md`](docs/learning-roadmap.md)：MDP → 表格法 → 值函数逼近 →
-策略梯度/PPO → 离线 RL → LLM SFT → 奖励模型 → DPO/PPO/GRPO，每阶段配一个小实验。
+- 项目约束只维护本文件；数据约束只维护 `data/AGENTS.md`，不再创建重复的目录说明或规则文件。
+- 不为安装、重构、单元测试、dry-run、数据核验生成实验报告；未运行实验不能填写结果或结论。
+- 只有实际开始训练或评测后，才可复制 [实验模板](docs/experiments/TEMPLATE.md)，
+  命名 `YYYY-MM-DD-<实验名>.md`，关联真实 run、配置、数据和指标，失败与中断也如实记录。
+- 没有多 seed 支持的效果结论标为“初步观察”。研究笔记和 skill 自带文档属于资料，不复制成项目约束。

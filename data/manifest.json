@@ -1,3 +1,823 @@
 {
-  "datasets": []
+  "datasets": [
+    {
+      "name": "gsm1k",
+      "stage": "raw",
+      "local_path": "raw/gsm1k/bc09569d/source.arrow",
+      "sha256": "bf7b848f2badbdcb138d6fbc1f246a1902337ce4c00cc079e4f35baf8ed10764",
+      "bytes": 389520,
+      "records": null,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493:test",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/download_data/download_gsm1k_40/run.py",
+        "sha256": "c5e48d959f393e324c1475a362437487710359884a6036abbe832980c13e6594"
+      },
+      "parents": [],
+      "selection": {
+        "method": "fixed_revision_full_split"
+      },
+      "recorded_at": "2026-11-05T06:22:31.846628+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "raw",
+      "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+      "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687",
+      "bytes": 13904,
+      "records": 40,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493:test",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/download_data/download_gsm1k_40/run.py",
+        "sha256": "c5e48d959f393e324c1475a362437487710359884a6036abbe832980c13e6594"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/source.arrow",
+          "sha256": "bf7b848f2badbdcb138d6fbc1f246a1902337ce4c00cc079e4f35baf8ed10764"
+        }
+      ],
+      "selection": {
+        "method": "first_n",
+        "count": 40
+      },
+      "recorded_at": "2026-11-05T06:22:31.866480+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v1/sft-train.jsonl",
+      "sha256": "50e4e4c419611a61845bc40b3cdfffcc7069d693ba99cfbc06bdcb318c9b0511",
+      "bytes": 7135,
+      "records": 16,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "74d2dfba08ac7bd8ad8dfe3f29eff03fae63e88e346b61bb07462b69069d0616"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          8,
+          16,
+          22,
+          28,
+          33,
+          13,
+          5,
+          6,
+          7,
+          26,
+          34,
+          30,
+          29,
+          10,
+          32,
+          2
+        ],
+        "split": "train",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:22:32.747509+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v1/rl-train.jsonl",
+      "sha256": "fc912be7e8a410f45373e9ed20469321d8679c08af65f08daa183cfe0e0f8b67",
+      "bytes": 6524,
+      "records": 16,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "74d2dfba08ac7bd8ad8dfe3f29eff03fae63e88e346b61bb07462b69069d0616"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          8,
+          16,
+          22,
+          28,
+          33,
+          13,
+          5,
+          6,
+          7,
+          26,
+          34,
+          30,
+          29,
+          10,
+          32,
+          2
+        ],
+        "split": "train",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:22:32.766254+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v1/sft-eval.jsonl",
+      "sha256": "5f05ac7fa27825b61ffb142a57380971120cff66bc362991c90f3111ccf18239",
+      "bytes": 1482,
+      "records": 4,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "74d2dfba08ac7bd8ad8dfe3f29eff03fae63e88e346b61bb07462b69069d0616"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          38,
+          9,
+          35,
+          14
+        ],
+        "split": "eval",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:22:32.786449+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v1/rl-eval.jsonl",
+      "sha256": "9611a750f151e96879f8ab987e5339bf0e9d952756075a91ae65801eaa441854",
+      "bytes": 1331,
+      "records": 4,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "74d2dfba08ac7bd8ad8dfe3f29eff03fae63e88e346b61bb07462b69069d0616"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          38,
+          9,
+          35,
+          14
+        ],
+        "split": "eval",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:22:32.804828+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v1/sft-cases.jsonl",
+      "sha256": "048e6ff457a0e7b84776c3c0ce74f71d7c143144b2223264979111a8cf809ec3",
+      "bytes": 1640,
+      "records": 4,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "74d2dfba08ac7bd8ad8dfe3f29eff03fae63e88e346b61bb07462b69069d0616"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          17,
+          4,
+          20,
+          39
+        ],
+        "split": "cases",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:22:32.823407+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v1/rl-cases.jsonl",
+      "sha256": "a6bcb813a6e48609c0868f1249b41730f14736a868e0b2439d968a54e5f6009c",
+      "bytes": 1487,
+      "records": 4,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "74d2dfba08ac7bd8ad8dfe3f29eff03fae63e88e346b61bb07462b69069d0616"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          17,
+          4,
+          20,
+          39
+        ],
+        "split": "cases",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:22:32.843022+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v2/sft-train.jsonl",
+      "sha256": "295ba2d400bf591c1f29772f683e968a85a3b1176d99cf2b1a086fde33b73b64",
+      "bytes": 7706,
+      "records": 16,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "f6c89295cf98166f134c3e3b0e7d13adc18817a36323fa76319650e72a8acdd7"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          31,
+          38,
+          23,
+          13,
+          9,
+          19,
+          37,
+          28,
+          27,
+          32,
+          3,
+          26,
+          29,
+          2,
+          21,
+          6
+        ],
+        "split": "train",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:23:24.886767+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v2/rl-train.jsonl",
+      "sha256": "da8de1ef342f91de1010f45162a43f6387ddabd43c514318a0a6943079eeadfb",
+      "bytes": 7091,
+      "records": 16,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "f6c89295cf98166f134c3e3b0e7d13adc18817a36323fa76319650e72a8acdd7"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          31,
+          38,
+          23,
+          13,
+          9,
+          19,
+          37,
+          28,
+          27,
+          32,
+          3,
+          26,
+          29,
+          2,
+          21,
+          6
+        ],
+        "split": "train",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:23:24.904497+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v2/sft-eval.jsonl",
+      "sha256": "62f63a988019eec965d74fa93f79958c6b8c6bce625907e41718e6a3a5a1a0b5",
+      "bytes": 1247,
+      "records": 4,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "f6c89295cf98166f134c3e3b0e7d13adc18817a36323fa76319650e72a8acdd7"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          39,
+          17,
+          35,
+          20
+        ],
+        "split": "eval",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:23:24.922685+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v2/rl-eval.jsonl",
+      "sha256": "ff96b816a4fbb9df3215027eeb586719302009e89319a8bb772ed5de89e591b5",
+      "bytes": 1094,
+      "records": 4,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "f6c89295cf98166f134c3e3b0e7d13adc18817a36323fa76319650e72a8acdd7"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          39,
+          17,
+          35,
+          20
+        ],
+        "split": "eval",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:23:24.945989+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v2/sft-cases.jsonl",
+      "sha256": "ee91f455ac3e21c6832b17289054d2ff087e4c46a8df36454190e37f079b009a",
+      "bytes": 1703,
+      "records": 4,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "f6c89295cf98166f134c3e3b0e7d13adc18817a36323fa76319650e72a8acdd7"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          30,
+          18,
+          16,
+          12
+        ],
+        "split": "cases",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:23:24.965549+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v2/rl-cases.jsonl",
+      "sha256": "111092d2e3ec86be2fdfed323dace09d6ea403e6120b08fdd65b0a6d7e25ef15",
+      "bytes": 1549,
+      "records": 4,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "f6c89295cf98166f134c3e3b0e7d13adc18817a36323fa76319650e72a8acdd7"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          30,
+          18,
+          16,
+          12
+        ],
+        "split": "cases",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:23:24.988368+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v3/sft-train.jsonl",
+      "sha256": "01d545a919bcebd9448a26a01f032b88757450711f9b1dcc82bbcbec901cd835",
+      "bytes": 7770,
+      "records": 16,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "f80619cd3944880fcafc543caa3e5ffcc9ef7e9c0fe35881ee25f099a0cf0582"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          31,
+          38,
+          23,
+          13,
+          9,
+          19,
+          37,
+          28,
+          27,
+          32,
+          3,
+          26,
+          29,
+          2,
+          21,
+          6
+        ],
+        "split": "train",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:32:53.412327+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v3/rl-train.jsonl",
+      "sha256": "ab3551c86ebcbf21ea6eaf2a6c2c27ec73a0f5e9bff303faaf2fc302415715e1",
+      "bytes": 7123,
+      "records": 16,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "f80619cd3944880fcafc543caa3e5ffcc9ef7e9c0fe35881ee25f099a0cf0582"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          31,
+          38,
+          23,
+          13,
+          9,
+          19,
+          37,
+          28,
+          27,
+          32,
+          3,
+          26,
+          29,
+          2,
+          21,
+          6
+        ],
+        "split": "train",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:32:53.433644+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v3/sft-eval.jsonl",
+      "sha256": "3c043419753e7acd89627c6c499b5fd957d1e12f8d16e208ba9a7ccdea2f695a",
+      "bytes": 1263,
+      "records": 4,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "f80619cd3944880fcafc543caa3e5ffcc9ef7e9c0fe35881ee25f099a0cf0582"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          39,
+          17,
+          35,
+          20
+        ],
+        "split": "eval",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:32:53.453715+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v3/rl-eval.jsonl",
+      "sha256": "1675d6c9da94033dc7b7945c34dd1b2e35e1f7d6180eaf575640ac96e7ad626c",
+      "bytes": 1102,
+      "records": 4,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "f80619cd3944880fcafc543caa3e5ffcc9ef7e9c0fe35881ee25f099a0cf0582"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          39,
+          17,
+          35,
+          20
+        ],
+        "split": "eval",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:32:53.472659+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v3/sft-cases.jsonl",
+      "sha256": "9de80d83eb3d666fe52dcbb4fbafd7cd7b4cd8a012f4a2ddacec31fc228ef0f3",
+      "bytes": 1719,
+      "records": 4,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "f80619cd3944880fcafc543caa3e5ffcc9ef7e9c0fe35881ee25f099a0cf0582"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          30,
+          18,
+          16,
+          12
+        ],
+        "split": "cases",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:32:53.494124+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "processed",
+      "local_path": "processed/gsm1k/n24-s42-v3/rl-cases.jsonl",
+      "sha256": "5091bca786228bc64ba15633e8c34664c666ea5f20a841b9e434f36006b2e339",
+      "bytes": 1557,
+      "records": 4,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/process_data/process_gsm1k_pipeline/run.py",
+        "sha256": "f80619cd3944880fcafc543caa3e5ffcc9ef7e9c0fe35881ee25f099a0cf0582"
+      },
+      "parents": [
+        {
+          "local_path": "raw/gsm1k/bc09569d/first-40.jsonl",
+          "sha256": "a72043b3c645ecd2679ffe3b357753b4797686d80b4b93db3c044c86865ad687"
+        }
+      ],
+      "selection": {
+        "method": "seeded_length_strata",
+        "seed": 42,
+        "source_ids": [
+          30,
+          18,
+          16,
+          12
+        ],
+        "split": "cases",
+        "counts": {
+          "train": 16,
+          "eval": 4,
+          "cases": 4
+        },
+        "benchmark_use": "pipeline_smoke_only"
+      },
+      "recorded_at": "2026-11-05T06:32:53.515411+00:00"
+    },
+    {
+      "name": "gsm1k",
+      "stage": "raw",
+      "local_path": "raw/gsm1k/bc09569d/source.download.json",
+      "sha256": "d6a9ac3f537609aac0c364df28a47f9b1d446e003f271beb2dc6cb2b736834a0",
+      "bytes": 306,
+      "records": null,
+      "source": "ScaleAI/gsm1k@bc09569d09a614b9b530edc7f076fb214ac10493:test",
+      "license": "unknown",
+      "pipeline": {
+        "path": "data/download_data/download_gsm1k_40/run.py",
+        "sha256": "8bb404346865028f3b5c7ea238b70a5b2ffb5e793305108e5f94ea5c2a886f34"
+      },
+      "parents": [],
+      "selection": {
+        "method": "download_receipt"
+      },
+      "recorded_at": "2026-11-05T09:55:52.959414+00:00"
+    }
+  ]
 }

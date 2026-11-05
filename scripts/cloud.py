@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from rlflow.remote import connect, download_weights
+from sft.remote import connect, download_weights
 
 
 def main() -> None:
@@ -15,7 +15,8 @@ def main() -> None:
     checkpoints = sub.add_parser("checkpoints")
     checkpoints.add_argument("--offset", type=int, default=0, help="每页 100 条，下一页加 100")
     download = sub.add_parser("download")
-    download.add_argument("--checkpoint-id", required=True, help="checkpoint ID，非 sampler path")
+    download.add_argument("--run", required=True, help="本地 run 目录，包含配置和 checkpoint 引用")
+    download.add_argument("--step", type=int, required=True, help="已保存的训练 step")
     args = parser.parse_args()
     service = connect()
     if args.command == "models":
@@ -28,7 +29,7 @@ def main() -> None:
         )
         print(result.model_dump_json(indent=2))
     else:
-        print(download_weights(service, args.checkpoint_id))
+        print(download_weights(service, args.run, args.step))
 
 
 if __name__ == "__main__":

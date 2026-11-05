@@ -1,0 +1,19 @@
+name: gsm1k
+source: ScaleAI/gsm1k
+revision: bc09569d09a614b9b530edc7f076fb214ac10493
+split: test
+license: unknown
+download:
+  endpoints: [https://huggingface.co, https://hf-mirror.com]
+  file: data/test/data-00000-of-00001.arrow
+  count: 40
+  proxy: auto
+selection:
+  count: 24
+  seed: 42
+  stratify_by: question_length
+  output_version: n24-s42-v3
+splits:
+  train: 16
+  eval: 4
+  cases: 4

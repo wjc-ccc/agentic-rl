@@ -1,10 +1,9 @@
-# 独立的 PPO / CartPole 配置；算法尚未实现，当前仅支持 --dry-run。
-# 运行：uv run python scripts/train.py --config configs/rl/ppo_cartpole.yaml --dry-run
+# 独立备用的 PPO / CartPole 配置；算法、模型 client 和执行入口均未实现。
+# 仅供 rl.config.load_config 读取；当前 SFT scripts/train.py 会拒绝此配置。
 seed: 42
 device: auto
 stage: rl
 algo: ppo
-run_name: ppo-cartpole
 
 env:
   id: CartPole-v1

@@ -2685,6 +2685,7 @@ cloud = [
 llm = [
     { name = "accelerate" },
     { name = "datasets" },
+    { name = "modelscope" },
     { name = "peft" },
     { name = "transformers" },
     { name = "trl" },
@@ -2704,6 +2705,7 @@ requires-dist = [
     { name = "datasets", marker = "extra == 'llm'", specifier = ">=3.1" },
     { name = "gymnasium", specifier = ">=1.1" },
     { name = "matplotlib", specifier = ">=3.9" },
+    { name = "modelscope", marker = "extra == 'llm'", specifier = ">=1.40.2" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "peft", marker = "extra == 'llm'", specifier = ">=0.13" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
@@ -2714,8 +2716,8 @@ requires-dist = [
     { name = "torch", specifier = ">=2.5", index = "https://download.pytorch.org/whl/cu128" },
     { name = "tqdm", specifier = ">=4.66" },
     { name = "transformers", marker = "extra == 'cloud'", specifier = ">=4.57.3" },
-    { name = "transformers", marker = "extra == 'llm'", specifier = ">=4.46" },
-    { name = "trl", marker = "extra == 'llm'", specifier = ">=0.13" },
+    { name = "transformers", marker = "extra == 'llm'", specifier = ">=5.22.1,<6" },
+    { name = "trl", marker = "extra == 'llm'", specifier = ">=1.17.1,<2" },
 ]
 provides-extras = ["llm", "cloud"]
 
